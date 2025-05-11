@@ -1,0 +1,259 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper, margin=1in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{SAT Solving Techniques}
+\lhead{Student Paper}
+\cfoot{\thepage}
+
+\title{SAT Solving Techniques: A Comparative Study}
+\author{Lorand Ștefan Szasz \\ Department of Computer Science \\ West University Timi\c{s}oara \\ \texttt{lorand.szasz06@e-uvt.ro}}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This paper presents a comparative evaluation of three foundational SAT solving algorithms: Resolution, Davis-Putnam (DP), and Davis-Putnam-Logemann-Loveland (DPLL). While all are theoretically complete, they differ significantly in practical performance. We implement each algorithm and assess their runtime and memory efficiency on randomized CNF instances of varying complexity. Results reveal that DPLL consistently outperforms the others, supporting its use as the basis for modern SAT solvers. In addition to our benchmarking results, we discuss key theoretical and empirical insights to guide future solver development.
+\end{abstract}
+
+\newpage
+\tableofcontents
+
+\newpage
+\section{Introduction}
+
+\subsection*{Motivation for the Problem}
+\hspace*{2em}
+The Boolean Satisfiability Problem (SAT), the first proven NP-complete problem, remains a central challenge in computer science with widespread applications in hardware verification, software testing, and AI planning. Efficient SAT solving is crucial despite its inherent computational complexity. The three foundational approaches---Resolution, Davis-Putnam (DP), and Davis-Putnam-Logemann-Loveland (DPLL)---represent significant milestones in automated reasoning, each addressing limitations of its predecessors.\\
+\hspace*{2em}
+Recent advances in SAT solving have been driven by both theoretical insights and practical demands. The SAT community has developed highly optimized solvers that push the limits of what is computationally feasible. Yet, revisiting the classical approaches remains relevant for educational purposes and for understanding the underpinnings of modern solvers.
+
+\subsection*{Description of the Solution}
+\hspace*{2em}
+To compare these classical SAT solving approaches, we developed a benchmarking framework that measures both execution time and memory consumption across identical problem instances. Our implementation ensures a controlled environment where Resolution, DP, and DPLL algorithms can be directly compared without implementation-specific biases. This empirical evaluation quantifies the practical performance differences between the methods.\\
+\hspace*{2em}
+We also analyze how different algorithmic strategies scale across varying problem complexities. The benchmarking process involves systematically increasing the number of variables and clauses to explore performance thresholds and memory bottlenecks.
+
+\subsection*{Example}
+\hspace*{2em}
+Consider a simple Boolean formula: \((x_1 \lor x_2) \land (\lnot x_1 \lor x_3) \land (\lnot x_2 \lor \lnot x_3)\). Resolution would derive new clauses through variable elimination, potentially increasing formula size. DP performs resolution-based variable elimination, possibly generating many intermediate clauses. DPLL employs backtracking, unit propagation, and pure literal elimination to efficiently solve the formula.\\
+\hspace*{2em}
+This example demonstrates the fundamental trade-offs between the approaches: completeness versus efficiency, memory consumption versus execution time, and the balance of logic-driven versus heuristic search.
+
+\subsection*{Originality}
+\hspace*{2em}
+The contribution of this work lies in the original implementation and evaluation of the three SAT solving algorithms. All experiments and benchmarks were designed and executed independently using a custom Python-based framework. The work also includes an exploratory analysis of solver behavior under stress conditions, adding novel empirical observations to the field.
+
+\subsection*{Reading Instructions}
+\hspace*{2em}
+Section 2 formally describes the SAT problem and the three algorithms. Section 3 outlines implementation details. Section 4 presents case studies and experimental results. Section 5 discusses related work. Section 6 summarizes our conclusions and outlines future research.
+
+\section{Formal Description of Problem and Solution}
+
+\subsection{The Boolean Satisfiability Problem}
+\hspace*{2em}
+The SAT problem asks whether a Boolean formula \(\phi\) in conjunctive normal form (CNF) has a satisfying assignment. A CNF formula \(\phi\) over variables \(X = \{x_1, ..., x_n\}\) is a conjunction of clauses \(C_1 \land ... \land C_m\), where each clause is a disjunction of literals. An assignment \(\sigma: X \rightarrow \{0, 1\}\) satisfies \(\phi\) if all clauses evaluate to true.\\
+\hspace*{2em}
+SAT is central to complexity theory and is the canonical NP-complete problem. It is widely used in various domains, including constraint programming, artificial intelligence, cryptographic analysis, and formal hardware and software verification.
+
+\subsection{Resolution}
+\hspace*{2em}
+Resolution derives a new clause from two input clauses by eliminating a complementary pair of literals. The process repeats until the empty clause is derived (unsatisfiable) or no further progress is possible (satisfiable). While complete, resolution can produce exponentially many clauses.\\
+\hspace*{2em}
+Resolution is inherently non-deterministic and can be enhanced with heuristics that guide which clauses to resolve first. However, these enhancements do not fundamentally change its exponential space complexity.
+
+\subsection{Davis-Putnam (DP) Algorithm}
+\hspace*{2em}
+DP improves upon resolution by eliminating variables one at a time. For each variable, all clauses containing the variable and its negation are resolved. The original clauses are removed, and the resolvents are added. The process continues until all variables are eliminated or the empty clause is derived.\\
+\hspace*{2em}
+DP maintains the completeness of resolution while organizing clause elimination more systematically. The downside is that it may still generate an intractable number of intermediate clauses.
+
+\subsection{Davis-Putnam-Logemann-Loveland (DPLL) Algorithm}
+DPLL replaces variable elimination with a backtracking search. It includes:
+\begin{itemize}
+  \item Unit propagation for single-literal clauses,
+  \item Pure literal elimination,
+  \item Recursive search with variable assignments.
+\end{itemize}
+DPLL uses linear space and significantly outperforms earlier methods in practice. It also provides the conceptual foundation for most modern SAT solvers, particularly those that implement clause learning and restart strategies.
+
+\subsection{Theoretical Comparison}
+\begin{itemize}
+  \item \textbf{Space Efficiency:} DPLL is linear; Resolution and DP may be exponential.
+  \item \textbf{Pruning:} DPLL uses backtracking and simplification.
+  \item \textbf{Search Strategy:} Resolution is saturation-based; DP eliminates variables; DPLL uses recursive backtracking.
+\end{itemize}
+
+Theoretically, DPLL is often preferable in practice, but worst-case behavior can still be exponential.
+
+\section{Model and Implementation of Problem and Solution}
+
+\subsection{Computational Model for SAT Solvers}
+\hspace*{2em}
+Boolean formulas are represented as lists of clauses, with literals encoded as integers. Positive values denote variables, negatives their negations. This mirrors the DIMACS CNF format.\\
+\hspace*{2em}
+This representation allows efficient manipulation and is compatible with various SAT solving tools, libraries, and benchmarking frameworks.
+
+\subsection{Implementation of Resolution}
+\hspace*{2em}
+Resolution uses a queue-based approach with tautology elimination and clause size constraints to control memory usage and prevent exponential blowup. Each iteration applies the resolution rule and updates the clause database accordingly.\\
+\hspace*{2em}
+The implementation carefully avoids generating clauses that are trivially true (tautologies), which helps reduce clutter in the search space.
+
+\subsection{Implementation of Davis-Putnam Algorithm}
+\hspace*{2em}
+DP is implemented with enhanced unit propagation and stack depth monitoring to manage recursion and memory use. To prevent combinatorial explosion, we use heuristics that prioritize certain variables based on clause frequency.
+
+\subsection{Implementation of DPLL Algorithm}
+\hspace*{2em}
+We use the PySAT library with Glucose 4 backend, which includes conflict-driven clause learning and advanced heuristics for modern DPLL. This provides a robust and scalable framework that reflects industrial-grade performance.
+
+\subsection{Performance Measurement Framework}
+Our Python benchmarking tool:
+\begin{itemize}
+  \item Tracks memory using \texttt{tracemalloc}
+  \item Measures time via high-precision counters
+  \item Normalizes GC and system conditions
+  \item Supports low, medium, and high complexity inputs
+  \item Verifies results across solvers
+\end{itemize}
+
+The framework is designed to be extensible and modular, allowing new solvers to be added with minimal effort.
+
+\subsection{System Usage}
+\hspace*{2em}
+The system supports batch input generation, instance execution, CSV export of results, and correctness validation. DPLL is used as the reference implementation.\\
+\hspace*{2em}
+Additionally, users can invoke solvers programmatically or through command-line scripts, facilitating integration into larger workflows.
+
+\section{Case Studies and Experiments}
+
+\subsection{Experimental Setup}
+\hspace*{2em}
+We generated 100 CNF instances each for low (5--10 variables), medium (20--40), and high (80--150) complexity. Experiments were run on an Ryzen 5 7640HS CPU 4.30GHz, with 16GB RAM.\\
+\hspace*{2em}
+Each test case was validated for syntactic correctness before execution. Random seeds were used for reproducibility. Timeouts were enforced to limit execution on intractable cases.
+
+\subsection{Performance Metrics}
+\begin{itemize}
+  \item Runtime in seconds
+  \item Peak memory in bytes
+  \item Correctness via cross-validation with DPLL
+\end{itemize}
+
+\subsection{Results Analysis}
+\subsubsection*{Runtime}
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Solver & Low & Medium & High \\
+\midrule
+Resolution & 0.0013 s & 0.0016 s & 0.0043 s \\
+DP         & 0.0001 s & 0.0003 s & 0.0017 s \\
+DPLL       & 0.0001 s & 0.0002 s & 0.0005 s \\
+\bottomrule
+\end{tabular}
+\caption{Median runtimes for SAT solvers}
+\end{table}
+
+\subsubsection*{Memory Consumption}
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Solver & Low & Medium & High \\
+\midrule
+Resolution & 17,492 B & 33,732 B & 78,032 B \\
+DP         & 8,344 B  & 34,792 B & 142,920 B \\
+DPLL       & 1,443 B  & 1,443 B  & 1,443 B \\
+\bottomrule
+\end{tabular}
+\caption{Median peak memory usage}
+\end{table}
+
+\subsubsection*{Correctness}
+\hspace*{2em}
+All solvers produced correct results across all tested instances, regardless of complexity level. Each solution was cross-validated against the reference DPLL implementation, and no discrepancies were found. This confirms the theoretical completeness and practical reliability of all three implementations in our benchmarking framework.
+
+\subsection{Discussion}
+\hspace*{2em}
+Results confirm that DPLL is the most efficient in time and memory. Resolution is least scalable, while DP performs moderately but still lags behind DPLL. The inability of Resolution to complete high-complexity cases within reasonable bounds highlights the need for improved heuristics or alternate strategies. Notably, DP exhibits significantly higher memory usage than the other methods, but this difference is only present in high-complexity instances.
+
+\section{Related Work}
+
+\subsection{Classical SAT Solving Approaches}
+\hspace*{2em}
+The Davis-Putnam procedure introduced in 1960 laid the groundwork for resolution-based reasoning. It was the first complete method for solving SAT and influenced generations of logic-based systems. However, its reliance on exhaustive resolution led to space inefficiencies. The DPLL algorithm, introduced two years later, revolutionized SAT solving by introducing a backtracking search that incorporates early pruning.\\
+\hspace*{2em}
+These classical methods continue to be used in educational tools and as baselines in solver benchmarks. Understanding their operation is essential for grasping the mechanics of more complex, modern SAT technologies.
+
+\subsection{Modern SAT Solvers}
+\hspace*{2em}
+Modern SAT solvers build on DPLL by incorporating Conflict-Driven Clause Learning (CDCL), dynamic variable ordering, restarts, and watched literals. Popular solvers like MiniSAT, Glucose, and CaDiCaL have achieved state-of-the-art performance in SAT competitions.\\
+\hspace*{2em}
+CDCL solvers are capable of solving industrial instances with millions of variables and clauses, a scale unimaginable for pure DPLL or Resolution solvers. These solvers also leverage domain-specific encodings, efficient memory management, and parallel processing.
+
+\subsection{Theoretical and Empirical Analysis}
+\hspace*{2em}
+Theoretical studies, such as those by Beame et al. (2004), have shown exponential separations between proof systems, providing a foundation for empirical comparison. Resolution-based methods tend to generate lengthy proofs in certain classes, while DPLL-based approaches can shortcut these paths with clever branching strategies.\\
+\hspace*{2em}
+Empirical results from SAT competitions consistently demonstrate that DPLL-based solvers dominate both random and structured benchmarks. However, for small handcrafted instances, traditional methods can still be competitive.
+
+\subsection{Alternative Approaches}
+\hspace*{2em}
+Aside from complete solvers, various incomplete or probabilistic approaches have been developed. WalkSAT, GSAT, and other local search solvers aim to quickly find satisfying assignments without guarantees. These are particularly useful in satisfiable-heavy domains, such as AI planning or game solving.\\
+\hspace*{2em}
+Moreover, hybrid approaches that combine CDCL with local search or lookahead techniques are under investigation. Solver portfolios—collections of specialized solvers applied dynamically—are also gaining traction in AI.
+
+\subsection{Applications Beyond SAT}
+\hspace*{2em}
+SAT solvers are now used to solve problems in SMT (Satisfiability Modulo Theories), model checking, equivalence checking, and synthesis. Reducing problems to SAT has become a general-purpose strategy in formal methods, extending the impact of SAT beyond theoretical interest.
+
+\section{Conclusions and Future Work}
+
+\subsection{Summary of Findings}
+\hspace*{2em}
+This paper provided a comparative study of Resolution, Davis-Putnam, and DPLL SAT solving algorithms. Through both theoretical exposition and empirical benchmarking, we illustrated the strengths and limitations of each. DPLL emerged as the most practically efficient solver, particularly in memory-constrained and large-scale settings.\\
+\hspace*{2em}
+Resolution and DP, while foundational, struggle to scale due to combinatorial explosion. Nonetheless, they remain critical for understanding solver evolution and the mathematical underpinnings of logic reasoning.
+
+\subsection{Practical Implications}
+\hspace*{2em}
+Our findings support the continued use of DPLL and CDCL-based solvers in real-world scenarios, including formal verification, software testing, and symbolic AI. Developers should favor solvers that implement advanced heuristics and memory-aware search strategies.\\
+\hspace*{2em}
+For academic purposes, implementing and analyzing Resolution and DP is beneficial for developing intuition about logical reasoning, proof systems, and solver trade-offs.
+
+\subsection{Future Research Directions}
+Several directions could enhance this study:
+\begin{itemize}
+  \item \textbf{Specialized Benchmarks:} Apply solvers to specific SAT subclasses like Horn-SAT, XOR-SAT, or 2-SAT where theoretical results suggest different performance hierarchies.
+  \item \textbf{Solver Portfolios:} Combine Resolution, DP, and DPLL in a meta-solver that dynamically selects the most promising strategy based on problem features.
+  \item \textbf{Parallel and Distributed Solving:} Implement each algorithm in parallel environments to evaluate scalability under concurrency.
+  \item \textbf{Heuristic Tuning:} Investigate the impact of variable ordering, clause learning thresholds, and other heuristics on DP and Resolution efficiency.
+  \item \textbf{Integration with SMT:} Extend this work by embedding SAT into SMT contexts, where the logical base is enriched with arithmetic, arrays, and other theories.
+  \item \textbf{Visual Debugging Tools:} Develop visualization interfaces to observe how each solver explores the search space, aiding education and algorithm refinement.
+\end{itemize}
+
+These directions point toward a future where SAT solving remains not only a research interest but a practical cornerstone in computational logic.
+
+\subsection{Reproducibility and Source Code}
+\hspace*{2em}
+Finally, to facilitate reproducibility and allow readers to explore the Python source code used for this paper, we provide access to the full project.\\
+\hspace*{2em}
+The Python code and associated files can be viewed and downloaded from the following GitHub repository: 
+    \texttt{\href{https://github.com/juuucey/MPI-SATbenchmark}{https://github.com/juuucey/MPI-SATbenchmark}}\\
+
+\end{document}
